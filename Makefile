@@ -178,7 +178,11 @@ endif
 	mkdir -p ${PREFIX}/lib/
 	install support/c/${IDRIS2_SUPPORT} ${PREFIX}/lib
 	mkdir -p ${PREFIX}/bin/${NAME}_app
-	install ${TARGETDIR}/${NAME}_app/* ${PREFIX}/bin/${NAME}_app
+ifeq ($(IDRIS2_CG), racket)
+	mkdir -p ${PREFIX}/bin/${NAME}_app/compiled
+	install ${TARGETDIR}/${NAME}_app/compiled/* ${PREFIX}/bin/${NAME}_app/compiled
+endif
+	install ${TARGETDIR}/${NAME}_app/*idris2* ${PREFIX}/bin/${NAME}_app
 
 install-support:
 	mkdir -p ${PREFIX}/${NAME_VERSION}/support/docs
