@@ -11,7 +11,7 @@ else
     DIR=$(dirname "$(readlink -f -- "$0")")
 fi
 
-export LD_LIBRARY_PATH="$DIR/idris2_app:$LD_LIBRARY_PATH"
-export DYLD_LIBRARY_PATH="$DIR/idris2_app:$DYLD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$DIR/idris2_app${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
+export DYLD_LIBRARY_PATH="$DIR/idris2_app${DYLD_LIBRARY_PATH:+:}$DYLD_LIBRARY_PATH"
 
-${RACKET:=racket} "$DIR/idris2_app/compiled/idris2-boot_rkt.zo" "$@"
+"${RACKET:=racket}" "$DIR/idris2_app/compiled/idris2-boot_rkt.zo" "$@"
