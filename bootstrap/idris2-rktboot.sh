@@ -13,4 +13,4 @@ fi
 
 export LD_LIBRARY_PATH="$DIR/idris2_app:$LD_LIBRARY_PATH"
 
-${RACKET:=racket} "$DIR/idris2_app/compiled/idris2-boot_rkt.zo" "$@"
+"${RACKET:=racket}" "$DIR/idris2_app/compiled/idris2-boot_rkt.zo" "$@"

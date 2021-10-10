@@ -4,6 +4,8 @@ import public Data.So
 import Data.List
 import Data.String
 
+import System.Info
+
 %default total
 
 support : String -> String
@@ -105,7 +107,8 @@ prim__system : String -> PrimIO Int
 
 export
 system : HasIO io => String -> io Int
-system cmd = primIO (prim__system cmd)
+system cmd = primIO $ prim__system $
+  if isWindows then ";" ++ cmd else cmd
 
 %foreign support "idris2_time"
          "javascript:lambda:() => Math.floor(new Date().getTime() / 1000)"

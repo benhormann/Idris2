@@ -34,12 +34,12 @@ import System.Info
 findRacket : IO String
 findRacket =
   do env <- idrisGetEnv "RACKET"
-     pure $ fromMaybe "/usr/bin/env racket" env
+     pure $ fromMaybe "racket" env
 
 findRaco : IO String
 findRaco =
   do env <- idrisGetEnv "RACKET_RACO"
-     pure $ fromMaybe "/usr/bin/env raco" env
+     pure $ fromMaybe "raco" env
 
 schHeader : Bool -> String -> String
 schHeader prof libs
@@ -343,15 +343,16 @@ startRacket racket appdir target = unlines
     , "fi"
     , ""
     , "export LD_LIBRARY_PATH=\"$DIR/" ++ appdir ++ ":$LD_LIBRARY_PATH\""
-    , racket ++ " -u \"$DIR/" ++ target ++ "\" \"$@\""
+    , "\"" ++ racket ++ "\" -u \"$DIR/" ++ target ++ "\" \"$@\""
     ]
 
 startRacketCmd : String -> String -> String -> String
 startRacketCmd racket appdir target = unlines
     [ "@echo off"
+    , "rem " ++ (generatedString "Racket")
     , "set APPDIR=%~dp0"
     , "set PATH=%APPDIR%" ++ appdir ++ ";%PATH%"
-    , racket ++ " -u \"%APPDIR%" ++ target ++ "\" %*"
+    , "\"" ++ racket ++ "\" -u \"%APPDIR%" ++ target ++ "\" %*"
     ]
 
 startRacketWinSh : String -> String -> String -> String
@@ -363,7 +364,7 @@ startRacketWinSh racket appdir target = unlines
     , ""
     , "DIR=$(dirname \"$(readlink -f -- \"$0\" || cygpath -a -- \"$0\")\")"
     , "PATH=\"$DIR/" ++ appdir ++ ":$PATH\""
-    , racket ++ " -u \"$DIR/" ++ target ++ "\" \"$@\""
+    , "\"" ++ racket ++ "\" -u \"$DIR/" ++ target ++ "\" \"$@\""
     ]
 
 compileToRKT : Ref Ctxt Defs ->
@@ -434,7 +435,7 @@ compileExpr mkexec c tmpDir outputDir tm outfile
          ok <- the (Core Int) $ if mkexec
                   then logTime "+ Build racket" $
                          coreLift $
-                           system (raco ++ " make " ++ outRktAbs)
+                           system ("\"" ++ raco ++ "\" make " ++ outRktAbs)
                   else pure 0
          if ok == 0
             then do -- TODO: add launcher script
