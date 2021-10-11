@@ -364,7 +364,7 @@ startRacketWinSh racket appdir target = unlines
     , ""
     , "DIR=$(dirname \"$(readlink -f -- \"$0\" || cygpath -a -- \"$0\")\")"
     , "PATH=\"$DIR/" ++ appdir ++ ":$PATH\""
-    , "\"" ++ racket ++ "\" -u \"$DIR/" ++ target ++ "\" \"$@\""
+    , "\"" ++ racket ++ "\" -u \"$DIR/" ++ windowsToUnix target ++ "\" \"$@\""
     ]
 
 compileToRKT : Ref Ctxt Defs ->

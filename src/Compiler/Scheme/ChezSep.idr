@@ -86,10 +86,10 @@ startChezWinSh chez appDirSh targetSh = unlines
     , ""
     , "DIR=$(dirname \"$(readlink -f -- \"$0\" || cygpath -a -- \"$0\")\")"
     , "PATH=\"$DIR/" ++ appDirSh ++ ":$PATH\""
-    , "\"" ++ chez ++ "\" --program \"$DIR/" ++ targetSh ++ "\" \"$@\""
+    , "\"" ++ chez ++ "\" --program \"$DIR/" ++ windowsToUnix targetSh ++ "\" \"$@\""
     , "\"" ++ chez ++ "\" -q "
         ++ "--libdirs \"$DIR/" ++ appDirSh ++ "\" "
-        ++ "--program \"$DIR/" ++ targetSh ++ "\" "
+        ++ "--program \"$DIR/" ++ windowsToUnix targetSh ++ "\" "
         ++ "\"$@\""
     ]
 

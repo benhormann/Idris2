@@ -424,7 +424,7 @@ startChezWinSh chez progType appdir target = unlines
     , "DIR=$(dirname \"$(readlink -f -- \"$0\" || cygpath -a -- \"$0\")\")"
     , "PATH=\"$DIR/" ++ appdir ++ ":$PATH\""
     , "export IDRIS2_INC_SRC=\"$DIR/" ++ appdir ++ "\""
-    , "\"" ++ chez ++ "\" " ++ progType ++ " \"$DIR/" ++ target ++ "\" \"$@\""
+    , "\"" ++ chez ++ "\" " ++ progType ++ " \"$DIR/" ++ windowsToUnix target ++ "\" \"$@\""
     ]
 
 ||| Compile a TT expression to Chez Scheme
