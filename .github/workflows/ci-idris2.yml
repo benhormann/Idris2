@@ -57,17 +57,21 @@ jobs:
         uses: actions/checkout@v2
       - name: Download and extract Chez Scheme
         run: |
-          echo "$PATH"
-          echo "$PWD"
+          echo "PATH=$PATH"
+          echo "PWD=$PWD"
           find "$(cygpath -u "${WIX}")" -name dark.exe || echo "dark.exe not found"
-          curl -Is https://github.com/cisco/ChezScheme/releases/latest
           tag=$(curl -Is https://github.com/cisco/ChezScheme/releases/latest | awk -F/ '/^[Ll]ocation:/ {print $NF}')
           ver=${tag#v}
           echo "tag=$tag ver=$ver"
           curl -LO https://github.com/cisco/ChezScheme/releases/download/$tag/ChezScheme$ver.exe
           dark=$(cygpath -u "${WIX%\\}")/bin/dark.exe
+          echo "Extracting with dark.exe"
           "$dark" -x extracted ChezScheme$ver.exe
+          echo "Extracting with msiexec"
           msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
+          printf "find: "
+          find . -name scheme.exe || echo "Not found"
+          echo "Test scheme.exe"
           "./Chez Scheme $ver/bin/ta6nt/scheme.exe" --version
           rm -rf extracted
           echo "$(cygpath -w "$PWD")\\Chez Scheme $ver\\bin\\ta6nt" >> $GITHUB_PATH
@@ -79,7 +83,8 @@ jobs:
           echo "PREFIX=$idris" >> $GITHUB_ENV
       - name: Test Scheme
         run: |
-          scheme --version
+          echo "PATH=$PATH"
+          scheme --version || scheme.exe --version
       - name: Bootstrap
         run: make bootstrap
       - name: Bootstrap test
@@ -119,8 +124,8 @@ jobs:
           path: 'ChezScheme'
       - name: Configure and Build Chez Scheme
         run: |
-          echo "$PATH"
-          echo "$PWD"
+          echo "PATH=$PATH"
+          echo "PWD=$PWD"
           cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
@@ -132,7 +137,8 @@ jobs:
           echo "PREFIX=$idris" >> $GITHUB_ENV
       - name: Test Scheme
         run: |
-          scheme --version
+          echo "PATH=$PATH"
+          scheme --version || scheme.exe --version
       - name: Bootstrap
         run: make bootstrap
       - name: Bootstrap test
