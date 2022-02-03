@@ -34,6 +34,70 @@ on:
 
 jobs:
 
+  windows-bstp-chez:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    env:
+      SCHEME: scheme
+    steps:
+      - name: Init
+        shell: powershell
+        run: |
+          git config --global core.autocrlf false
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          update: true
+          install: curl git make mingw-w64-x86_64-gcc
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download and extract Chez Scheme
+        run: |
+          echo "PATH=$PATH"
+          echo "PWD=$PWD"
+          find "$(cygpath -u "${WIX}")" -name dark.exe || echo "dark.exe not found"
+          tag=$(curl -Is https://github.com/cisco/ChezScheme/releases/latest | awk -F/ '/^[Ll]ocation:/ {print $NF}')
+          ver=${tag#v}
+          echo "tag=$tag ver=$ver"
+          curl -LO https://github.com/cisco/ChezScheme/releases/download/$tag/ChezScheme$ver.exe
+          dark=$(cygpath -u "${WIX%\\}")/bin/dark.exe
+          echo "Extracting with dark.exe"
+          "$dark" -x extracted ChezScheme$ver.exe
+          printf "Extracting with msiexec: "
+          find . -name ChezScheme64.msi || echo "Not found"
+          msiexec /i extracted\\AttachedContainer\\ChezScheme64.msi INSTALLDIR="$(cygpath -w "$PWD")" /qn /norestart
+          printf "find: "
+          find . -name scheme.exe || echo "Not found"
+          echo "Test scheme.exe"
+          "./Chez Scheme $ver/bin/ta6nt/scheme.exe" --version
+          rm -rf extracted
+          echo "$(cygpath -w "$PWD")\\Chez Scheme $ver\\bin\\ta6nt" >> $GITHUB_PATH
+      - name: Set Path
+        run: |
+          idris="$(cygpath -w "$PWD")\\.idris2"
+          echo "$idris\\bin" >> $GITHUB_PATH
+          echo "IDRIS_PREFIX=$idris" >> $GITHUB_ENV
+          echo "PREFIX=$idris" >> $GITHUB_ENV
+      - name: Test Scheme
+        run: |
+          echo "PATH=$PATH"
+          scheme --version || scheme.exe --version
+      - name: Bootstrap
+        run: make bootstrap
+      - name: Bootstrap test
+        run: make bootstrap-test
+      - name: Install
+        run: make install
+      #- name: Artifact Idris2 from chez
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: windows-installed-bootstrapped-idris2-chez
+      #    path: ${{ env.IDRIS_PREFIX }}
+
   windows-bootstrap-chez:
     runs-on: windows-latest
     defaults:
@@ -69,7 +133,7 @@ jobs:
           "$dark" -x extracted ChezScheme$ver.exe
           printf "Extracting with msiexec: "
           find . -name ChezScheme64.msi || echo "Not found"
-          msiexec /a extracted\\AttachedContainer\\ChezScheme64.msi TARGETDIR="$(cygpath -w "$PWD")" /qn
+          msiexec /a extracted\\AttachedContainer\\ChezScheme64.msi TARGETDIR="$(cygpath -w "$PWD")" /qn /norestart
           printf "find: "
           find . -name scheme.exe || echo "Not found"
           echo "Test scheme.exe"
@@ -100,6 +164,7 @@ jobs:
 
   msys2-ucrt-bootstrap-chez:
     runs-on: windows-latest
+    if: false
     defaults:
       run:
         shell: msys2 {0}
