@@ -69,9 +69,7 @@ jobs:
           "$dark" -x extracted ChezScheme$ver.exe
           printf "Extracting with msiexec: "
           find . -name ChezScheme64.msi || echo "Not found"
-          echo "find *.msi:"
-          find . -name \*.msi || echo "Not found"
-          msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
+          msiexec /a extracted\\AttachedContainer\\ChezScheme64.msi TARGETDIR="$(cygpath -w "$PWD")" /qn
           printf "find: "
           find . -name scheme.exe || echo "Not found"
           echo "Test scheme.exe"
@@ -112,6 +110,7 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
+          path-type: inherit
           update: true
           install: git make mingw-w64-ucrt-x86_64-gcc
       - name: Init
