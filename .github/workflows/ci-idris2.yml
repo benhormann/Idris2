@@ -58,19 +58,22 @@ jobs:
       - name: Download and extract Chez Scheme
         run: |
           env | sort
-          curl -LO https://github.com/cisco/ChezScheme/releases/download/v9.5.4/ChezScheme9.5.4.exe
-          "$(cygpath -m "$WIX/dark.exe")" -x extracted ChezScheme9.5.4.exe
+          find "$WIX" -name dark.exe || true
+          tag=$(curl -Is https://github.com/cisco/ChezScheme/releases/latest | awk -F/ '/^Location:/ {print $NF}')
+          ver=${tag#v}
+          curl -LO https://github.com/cisco/ChezScheme/releases/download/$tag/ChezScheme$ver.exe
+          dark=$(cygpath -m "$WIX")/bin/dark.exe
+          "$dark" -x extracted ChezScheme$ver.exe
           msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
-          "./Chez Scheme 9.5.4/bin/ta6nt/scheme.exe" --version
+          "./Chez Scheme $ver/bin/ta6nt/scheme.exe" --version
           rm -rf extracted
+          echo "$(cygpath -w "$PWD")\\Chez Scheme $ver\\bin\\ta6nt" >> $GITHUB_PATH
       - name: Set Path
         run: |
-          chez="$PWD\\Chez Scheme 9.5.4\\bin\\ta6nt"
-          idris="$PWD\\.idris2"
-          echo "$chez" >> $GITHUB_PATH
+          idris="$(cygpath -w "$PWD")\\.idris2"
           echo "$idris\\bin" >> $GITHUB_PATH
           echo "IDRIS_PREFIX=$idris" >> $GITHUB_ENV
-          echo "PREFIX=$(cygpath -u $idris)" >> $GITHUB_ENV
+          echo "PREFIX=$idris" >> $GITHUB_ENV
       - name: Test Scheme
         run: |
           scheme --version
@@ -117,12 +120,12 @@ jobs:
           cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
-          chez="$PWD\\ChezScheme\\ta6nt\\bin\\ta6nt"
-          idris="$PWD\\.idris2"
+          chez=$(cygpath -w "$PWD")\\ChezScheme\\ta6nt\\bin\\ta6nt
+          idris=$(cygpath -w "$PWD")\\.idris2
           echo "$chez" >> $GITHUB_PATH
           echo "$idris\\bin" >> $GITHUB_PATH
           echo "IDRIS_PREFIX=$idris" >> $GITHUB_ENV
-          echo "PREFIX=$(cygpath -u $idris)" >> $GITHUB_ENV
+          echo "PREFIX=$idris" >> $GITHUB_ENV
       - name: Test Scheme
         run: |
           scheme --version
