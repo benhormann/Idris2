@@ -40,10 +40,7 @@ jobs:
       run:
         shell: msys2 {0}
     env:
-      MSYSTEM: MINGW64
-      MSYS2_PATH_TYPE: inherit
       SCHEME: scheme
-      CC: gcc
     steps:
       - name: Init
         shell: powershell
@@ -53,12 +50,14 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
+          path-type: inherit
           update: true
           install: curl git make mingw-w64-x86_64-gcc
       - name: Checkout
         uses: actions/checkout@v2
       - name: Download and extract Chez Scheme
         run: |
+          env | sort
           curl -LO https://github.com/cisco/ChezScheme/releases/download/v9.5.4/ChezScheme9.5.4.exe
           dark.exe -x extracted ChezScheme9.5.4.exe
           msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
