@@ -67,7 +67,10 @@ jobs:
           dark=$(cygpath -u "${WIX%\\}")/bin/dark.exe
           echo "Extracting with dark.exe"
           "$dark" -x extracted ChezScheme$ver.exe
-          echo "Extracting with msiexec"
+          printf "Extracting with msiexec: "
+          find . -name ChezScheme64.msi || echo "Not found"
+          echo "find *.msi:"
+          find . -name \*.msi || echo "Not found"
           msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
           printf "find: "
           find . -name scheme.exe || echo "Not found"
@@ -138,6 +141,8 @@ jobs:
       - name: Test Scheme
         run: |
           echo "PATH=$PATH"
+          printf "find: "
+          find . -name scheme.exe || echo "Not found"
           scheme --version || scheme.exe --version
       - name: Bootstrap
         run: make bootstrap
