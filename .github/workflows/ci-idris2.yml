@@ -59,7 +59,7 @@ jobs:
         run: |
           env | sort
           curl -LO https://github.com/cisco/ChezScheme/releases/download/v9.5.4/ChezScheme9.5.4.exe
-          dark.exe -x extracted ChezScheme9.5.4.exe
+          "$(cygpath -m "$WIX/dark.exe")" -x extracted ChezScheme9.5.4.exe
           msiexec /a extracted/AttachedContainer/ChezScheme64.msi TARGETDIR="$PWD" /qn
           "./Chez Scheme 9.5.4/bin/ta6nt/scheme.exe" --version
           rm -rf extracted
@@ -92,10 +92,7 @@ jobs:
       run:
         shell: msys2 {0}
     env:
-      MSYSTEM: UCRT64
-      MSYS2_PATH_TYPE: inherit
       SCHEME: scheme
-      CC: gcc
     steps:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -116,6 +113,7 @@ jobs:
           path: 'ChezScheme'
       - name: Configure and Build Chez Scheme
         run: |
+          env | sort
           cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
