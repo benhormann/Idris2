@@ -34,8 +34,8 @@ IDRIS2_LIB_IPKG := idris2api.ipkg
 
 ifeq ($(OS), windows)
 	# This produces D:/../.. style paths
-	IDRIS2_PREFIX := $(shell cygpath -m ${PREFIX})
-	IDRIS2_CURDIR := $(shell cygpath -m ${CURDIR})
+	IDRIS2_PREFIX := $(shell cygpath -m "${PREFIX}")
+	IDRIS2_CURDIR := $(shell cygpath -m "${CURDIR}")
 	SEP := ;
 else
 	IDRIS2_PREFIX := ${PREFIX}
@@ -183,15 +183,16 @@ install-with-src-api: src/IdrisPaths.idr
 	${IDRIS2_BOOT} --install-with-src ${IDRIS2_LIB_IPKG}
 
 install-idris2:
-	mkdir -p ${PREFIX}/bin/
+	mkdir -p ${PREFIX}/bin/${NAME}_app
 	install ${TARGET} ${PREFIX}/bin
 ifeq ($(OS), windows)
 	-install ${TARGET}.cmd ${PREFIX}/bin
 endif
-	mkdir -p ${PREFIX}/lib/
-	install support/c/${IDRIS2_SUPPORT} ${PREFIX}/lib
-	mkdir -p ${PREFIX}/bin/${NAME}_app
-	install ${TARGETDIR}/${NAME}_app/* ${PREFIX}/bin/${NAME}_app
+	install $(filter-out ${TARGET}_app/compiled, $(wildcard ${TARGET}_app/*)) ${PREFIX}/bin/${NAME}_app
+	if [ -d ${TARGET}_app/compiled ]; then \
+		mkdir -p ${PREFIX}/bin/${NAME}_app/compiled; \
+		install ${TARGET}_app/compiled/* ${PREFIX}/bin/${NAME}_app/compiled; \
+	fi
 
 install-support:
 	mkdir -p ${PREFIX}/${NAME_VERSION}/support/docs

@@ -45,7 +45,6 @@ jobs:
         with:
           # for pull_request so we can do HEAD^2
           fetch-depth: 2
-
       - name: Get commit message
         id: get_commit_message
         run: |
@@ -54,7 +53,6 @@ jobs:
           elif [[ '${{ github.event_name }}' == 'pull_request' ]]; then
             echo "::set-output name=commit_message::$(git log --format=%B -n 1 HEAD^2)"
           fi
-
     outputs:
       commit_message:
         echo "${{ steps.get_commit_message.outputs.commit_message }}"
@@ -83,7 +81,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y -t hirsute chezscheme
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
-
       # Get our hands on the released version either by using the cache
       # or by rebuilding it if necessary.
       - name: Cache Chez Previous Version
@@ -105,7 +102,6 @@ jobs:
           cd "Idris2-$IDRIS2_VERSION"
           make install
           cd ..
-
       # Build the current version and save the installation.
       - name: Build current version
         run: |
@@ -165,14 +161,12 @@ jobs:
         uses: actions/checkout@v2
       - name: Install build dependencies
         run: |
-          brew install chezscheme
-          brew install coreutils
+          brew install gmp chezscheme
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
       - name: Make bootstrap folder readonly
         run: chmod -R a-w bootstrap
       - name: Build Idris 2 from bootstrap
         run: make bootstrap && make install
-        shell: bash
       - name: Artifact Bootstrapped Idris2
         uses: actions/upload-artifact@v2
         with:
@@ -187,47 +181,53 @@ jobs:
       || contains(needs.initialise.outputs.commit_message, '[ci: windows]')
       || contains(needs.initialise.outputs.commit_message, '[ci: chez]')
       || contains(needs.initialise.outputs.commit_message, '[ci: racket]')
+    defaults:
+      run:
+        shell: msys2 {0}
     env:
-      MSYSTEM: MINGW64
-      MSYS2_PATH_TYPE: inherit
       SCHEME: scheme
       CC: gcc
     steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          update: true
+          install: git make mingw-w64-x86_64-gcc tar
       - name: Init
+        shell: powershell
         run: |
           git config --global core.autocrlf false
       - name: Checkout
         uses: actions/checkout@v2
       - name: Get Chez Scheme
-        run: |
-          git clone --depth 1 https://github.com/cisco/ChezScheme
-          c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm tar make"
-          echo "PWD=$(c:\msys64\usr\bin\cygpath -u $(pwd))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        uses: actions/checkout@v2
+        with:
+          repository: 'cisco/ChezScheme'
+          path: 'ChezScheme'
       - name: Configure and Build Chez Scheme
         run: |
-          c:\msys64\usr\bin\bash -l -c "cd $env:PWD && cd ChezScheme && ./configure --threads && make"
+          cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
-          $chez="$(pwd)\ChezScheme\ta6nt\bin\ta6nt"
-          $idris="$(pwd)\.idris2"
-          echo "$chez" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$idris\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "IDRIS_PREFIX=$idris" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "PREFIX=$(c:\msys64\usr\bin\cygpath -u $idris)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "$(cygpath -wa ChezScheme/ta6nt/bin/ta6nt)" >> $GITHUB_PATH
+          echo "$(cygpath -wa .idris2/bin)" >> $GITHUB_PATH
+          echo "PREFIX=$(cygpath -ma .idris2)" >> $GITHUB_ENV
       - name: Test Scheme
         run: |
           scheme --version
       - name: Bootstrap
-        run: c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make bootstrap"
+        run: make bootstrap
       - name: Bootstrap test
-        run: c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make bootstrap-test"
+        run: make bootstrap-test
       - name: Install
-        run: c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make install"
+        run: make install
       - name: Artifact Idris2 from chez
         uses: actions/upload-artifact@v2
         with:
           name: windows-installed-bootstrapped-idris2-chez
-          path: ${{ env.IDRIS_PREFIX }}
+          path: .idris2/
 
   nix-bootstrap-chez:
     needs: quick-check
@@ -250,12 +250,6 @@ jobs:
   ubuntu-bootstrap-racket:
     needs: quick-check
     runs-on: ubuntu-latest
-    if: |
-      false
-      && (!contains(needs.initialise.outputs.commit_message, '[ci:')
-      || contains(needs.initialise.outputs.commit_message, '[ci: ubuntu]')
-      || contains(needs.initialise.outputs.commit_message, '[ci: racket]'))
-
     env:
       IDRIS2_CG: racket
     steps:
@@ -274,6 +268,34 @@ jobs:
         with:
           name: ubuntu-installed-bootstrapped-idris2-racket
           path: ~/.idris2/
+
+  macos-bootstrap-racket:
+    needs: quick-check
+    runs-on: macos-latest
+    if: |
+      !contains(needs.initialise.outputs.commit_message, '[ci:')
+      || contains(needs.initialise.outputs.commit_message, '[ci: macos]')
+      || contains(needs.initialise.outputs.commit_message, '[ci: racket]')
+    env:
+      IDRIS2_CG: racket
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install build dependencies
+        run: |
+          brew install gmp minimal-racket
+          raco pkg install --auto compiler-lib r6rs-lib
+          echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
+      - name: Make bootstrap folder readonly
+        run: chmod -R a-w bootstrap
+      - name: Build Idris 2 from bootstrap
+        run: make bootstrap-racket && make install
+      - name: Artifact Bootstrapped Idris2
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos-installed-bootstrapped-idris2-racket
+          path: ~/.idris2/
+
 
   ######################################################################
   # Self-hosting builds and testing
@@ -303,7 +325,7 @@ jobs:
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
       - name: Build self-hosted
-        run: make all IDRIS2_BOOT="idris2 -Werror" && make install
+        run: make all IDRIS2_BOOT="idris2 -Werror"
       - name: Test self-hosted
         run: make test INTERACTIVE=''
 
@@ -322,23 +344,19 @@ jobs:
           path: ~/.idris2/
       - name: Install build dependencies
         run: |
-          brew install chezscheme
-          brew install coreutils
+          brew install gmp chezscheme
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
       - name: Build self-hosted
-        run: make all IDRIS2_BOOT="idris2 -Werror" && make install
-        shell: bash
+        run: make all IDRIS2_BOOT="idris2 -Werror"
       - name: Test self-hosted
         run: make test INTERACTIVE=''
-        shell: bash
 
   # RACKET
 
   ubuntu-self-host-racket:
     needs: ubuntu-bootstrap-racket
     runs-on: ubuntu-latest
-    if: false
     env:
       IDRIS2_CG: racket
     steps:
@@ -355,7 +373,7 @@ jobs:
           echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
           chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
       - name: Build self-hosted
-        run: make all IDRIS2_BOOT="idris2 -Werror" && make install
+        run: make all IDRIS2_BOOT="idris2 -Werror"
       - name: Test self-hosted
         run: make test INTERACTIVE=''
 
@@ -393,47 +411,74 @@ jobs:
           name: idris2-nightly-chez
           path: ~/.idris2/
 
+  macos-self-host-racket:
+    needs: macos-bootstrap-racket
+    runs-on: macos-latest
+    env:
+      IDRIS2_CG: racket
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download Idris2 Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: macos-installed-bootstrapped-idris2-racket
+          path: ~/.idris2/
+      - name: Install build dependencies
+        run: |
+          brew install gmp minimal-racket
+          raco pkg install --auto compiler-lib r6rs-lib
+          echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
+          chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
+      - name: Build self-hosted
+        run: make all IDRIS2_BOOT="idris2 -Werror"
+      - name: Test self-hosted
+        run: make test INTERACTIVE=''
+
   windows-self-host-racket:
     needs: windows-bootstrap-chez
     runs-on: windows-latest
-    if: |
-      !contains(needs.initialise.outputs.commit_message, '[ci:')
-      || contains(needs.initialise.outputs.commit_message, '[ci: windows]')
-      || contains(needs.initialise.outputs.commit_message, '[ci: racket]')
+    defaults:
+      run:
+        shell: msys2 {0}
     env:
       IDRIS2_CG: racket
-      MSYSTEM: MINGW64
-      MSYS2_PATH_TYPE: inherit
-      CC: gcc
-      RACKET_RACO: raco
+      SCHEME: scheme
     steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          #path-type: inherit
+          update: true
+          install: git make mingw-w64-x86_64-gcc tar
       - name: Init
+        shell: powershell
         run: |
           git config --global core.autocrlf false
-          echo "PWD=$(c:\msys64\usr\bin\cygpath -u $(pwd))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Checkout
         uses: actions/checkout@v2
       - name: Get Chez Scheme
-        run: |
-          git clone --depth 1 https://github.com/cisco/ChezScheme
-          c:\msys64\usr\bin\bash -l -c "pacman -S --noconfirm tar make"
-          echo "PWD=$(c:\msys64\usr\bin\cygpath -u $(pwd))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        uses: actions/checkout@v2
+        with:
+          repository: 'cisco/ChezScheme'
+          path: 'ChezScheme'
       - name: Configure and Build Chez Scheme
         run: |
-          c:\msys64\usr\bin\bash -l -c "cd $env:PWD && cd ChezScheme && ./configure --threads && make"
+          cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
-          $chez="$(pwd)\ChezScheme\ta6nt\bin\ta6nt"
-          $idris="$(pwd)\.idris2"
-          echo "$chez" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "$idris\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          echo "IDRIS_PREFIX=$idris" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "PREFIX=$(c:\msys64\usr\bin\cygpath -u $idris)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "$(cygpath -wa ChezScheme/ta6nt/bin/ta6nt)" >> $GITHUB_PATH
+          echo "$(cygpath -wa .idris2/bin)" >> $GITHUB_PATH
+          echo "PREFIX=$(cygpath -ma .idris2)" >> $GITHUB_ENV
+      - name: Test Scheme
+        run: |
+          scheme --version
       - name: Download Idris2 Artifact
         uses: actions/download-artifact@v2
         with:
           name: windows-installed-bootstrapped-idris2-chez
-          path: ${{ env.IDRIS_PREFIX }}
+          path: .idris2/
       - name: Install build dependencies
         uses: Bogdanp/setup-racket@v1.4
         with:
@@ -442,12 +487,10 @@ jobs:
           distribution: 'full'
       - name: Self host
         run: |
-          c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make"
-      # TODO: fix the broken tests!
-      # - name: Test
-      #  run: c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make test"
-      - name: Install
-        run: c:\msys64\usr\bin\bash -l -c "cd $env:PWD && make install"
+          make
+      - name: Test
+        run: |
+          make test
 
   ######################################################################
   # Ubuntu API
@@ -475,10 +518,8 @@ jobs:
           chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
       - name: Build API
         run: make install-api
-        shell: bash
       - name: Test API
         run: cd tests/idris2/api001 && ./run idris2
-        shell: bash
 
   ######################################################################
   # Ubuntu testing some libraries.
