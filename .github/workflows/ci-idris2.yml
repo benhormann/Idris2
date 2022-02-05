@@ -106,6 +106,9 @@ jobs:
       - name: Build current version
         run: |
           make && make install
+      - name: Test installation
+        run: |
+          idris2 -p network --paths
       - name: Artifact Idris2 from previous version
         uses: actions/upload-artifact@v2
         with:
@@ -141,6 +144,8 @@ jobs:
         run: chmod -R a-w bootstrap
       - name: Build from bootstrap
         run: make bootstrap && make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Artifact Bootstrapped Idris2
         uses: actions/upload-artifact@v2
         with:
@@ -167,6 +172,8 @@ jobs:
         run: chmod -R a-w bootstrap
       - name: Build Idris 2 from bootstrap
         run: make bootstrap && make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Artifact Bootstrapped Idris2
         uses: actions/upload-artifact@v2
         with:
@@ -223,6 +230,8 @@ jobs:
         run: make bootstrap-test
       - name: Install
         run: make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Artifact Idris2 from chez
         uses: actions/upload-artifact@v2
         with:
@@ -263,6 +272,8 @@ jobs:
         run: chmod -R a-w bootstrap
       - name: Build from bootstrap
         run: make bootstrap-racket && make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Artifact Bootstrapped Idris2
         uses: actions/upload-artifact@v2
         with:
@@ -290,6 +301,8 @@ jobs:
         run: chmod -R a-w bootstrap
       - name: Build Idris 2 from bootstrap
         run: make bootstrap-racket && make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Artifact Bootstrapped Idris2
         uses: actions/upload-artifact@v2
         with:
@@ -403,6 +416,8 @@ jobs:
           chmod +x "$HOME/.idris2/bin/idris2" "$HOME/.idris2/bin/idris2_app/"*
       - name: Build self-hosted from previous version
         run: make all IDRIS2_BOOT="idris2 -Werror" && make install
+      - name: Test installation
+        run: idris2 -p network --paths
       - name: Test self-hosted from previous version
         run: make test INTERACTIVE=''
       - name: Artifact Idris2
