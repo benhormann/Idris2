@@ -403,7 +403,6 @@ compileToRKT c appdir tm outfile
                    runmain ++ schFooter
          Right () <- coreLift $ writeFile outfile scm
             | Left err => throw (FileErr outfile err)
-         coreLift_ $ chmodRaw outfile 0o755
          pure ()
 
 makeSh : String -> String -> String -> String -> Core ()

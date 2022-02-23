@@ -468,7 +468,7 @@ compileToSS c prof appdir tm outfile
                    main ++ schFooter prof True
          Right () <- coreLift $ writeFile outfile scm
             | Left err => throw (FileErr outfile err)
-         coreLift_ $ chmodRaw outfile 0o755
+         pure ()
 
 ||| Compile a Chez Scheme source file to an executable, daringly with runtime checks off.
 compileToSO : {auto c : Ref Ctxt Defs} ->
@@ -483,7 +483,6 @@ compileToSO prof chez appDirRel outSsAbs
                     show outSsAbs ++ "))"
          Right () <- coreLift $ writeFile tmpFile build
             | Left err => throw (FileErr tmpFile err)
-         coreLift_ $ chmodRaw tmpFile 0o755
          0 <- coreLift $ system ("\"" ++ chez ++ "\" --script \"" ++ tmpFile ++ "\"")
             | exitCode => throw (InternalError $ "Non-zero compiler exitCode: " ++ show exitCode)
          pure ()
@@ -513,7 +512,6 @@ compileToSSInc c mods libs appdir tm outfile
 
          Right () <- coreLift $ writeFile outfile scm
             | Left err => throw (FileErr outfile err)
-         coreLift_ $ chmodRaw outfile 0o755
          pure ()
 
 
