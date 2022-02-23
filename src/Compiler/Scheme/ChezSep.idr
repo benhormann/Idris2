@@ -53,8 +53,8 @@ schFooter = """
 
 startChez : String -> String -> String -> String
 startChez chez appDirSh targetSh = Chez.startChezPreamble ++ """
-  export LD_LIBRARY_PATH="$DIR/\{ appdir }${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
-  export DYLD_LIBRARY_PATH="$DIR/\{ appdir }${DYLD_LIBRARY_PATH:+:}$DYLD_LIBRARY_PATH"
+  export LD_LIBRARY_PATH="$DIR/\{ appDirSh }${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
+  export DYLD_LIBRARY_PATH="$DIR/\{ appDirSh }${DYLD_LIBRARY_PATH:+:}$DYLD_LIBRARY_PATH"
 
   "\{ chez }" -q \
     --libdirs "$DIR/\{ appDirSh }" \
