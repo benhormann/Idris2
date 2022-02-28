@@ -12,9 +12,9 @@ OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
 
-all: $(TARGET)$(SHLIB_SUFFIX)
+all: $(TARGET)$(_DYLIB_EXT)
 
-$(TARGET)$(SHLIB_SUFFIX): $(OBJS)
+$(TARGET)$(_DYLIB_EXT): $(OBJS)
 	$(CC) -shared $(LDFLAGS) -o $@ $^
 
 
@@ -27,7 +27,7 @@ $(TARGET)$(SHLIB_SUFFIX): $(OBJS)
 .PHONY: clean
 
 clean :
-	rm -f $(OBJS) $(TARGET)$(SHLIB_SUFFIX)
+	rm -f $(OBJS) $(TARGET)$(_DYLIB_EXT)
 
 cleandep: clean
 	rm -f $(DEPS)
@@ -37,4 +37,4 @@ cleandep: clean
 
 install:
 	@if ! [ -d $(INSTALLDIR) ]; then mkdir -p $(INSTALLDIR); fi
-	install $(TARGET)$(SHLIB_SUFFIX) $(wildcard *.h) $(INSTALLDIR)
+	install $(TARGET)$(_DYLIB_EXT) $(wildcard *.h) $(INSTALLDIR)

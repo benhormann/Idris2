@@ -1,0 +1,51 @@
+package base
+version = 0.5.1
+
+opts = "-Wno-shadowing"
+
+sourcedir = "../libs/base"
+builddir = "../build/bootstrap/stage0"
+
+modules = Control.App.FileIO,
+          Control.Monad.Either,
+          Control.Monad.ST,
+          Control.Monad.State,
+          Data.Bits,
+          Data.Bool,
+          Data.Buffer,
+          Data.DPair,
+          Data.Either,
+          Data.Fin,
+          Data.IOArray.Prims,
+          Data.IORef,
+          Data.List,
+          Data.List.Elem,
+          Data.List.Quantifiers,
+          Data.List.Views,
+          Data.List1,
+          Data.Maybe,
+          Data.Nat,
+          Data.Primitives.Views,
+          Data.SnocList,
+          Data.Stream,
+          Data.String,
+          Data.These,
+          Data.Vect,
+          Decidable.Equality,
+          Decidable.Equality.Core,
+          System,
+          System.Clock,
+          System.Directory,
+          System.FFI,
+          System.File,
+          System.File.Error,
+          System.File.Handle,
+          System.File.Meta,
+          System.File.Mode,
+          System.File.Permissions,
+          System.File.Process,
+          System.File.ReadWrite,
+          System.File.Support,
+          System.File.Types,
+          System.File.Virtual,
+          System.Info

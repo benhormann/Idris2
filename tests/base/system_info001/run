@@ -2,12 +2,6 @@ rm -rf build
 
 rm -f expected
 
-if ! NProcs=$(nproc || sysctl -n hw.ncpu) 2>/dev/null; then
-  echo "Command 'nproc' not found." >&2
-  exit 1
-fi
-
-echo "$NProcs processors" > expected
+./gen_expected.sh
 
 $1 --no-banner --no-color --console-width 0 NumProcessors.idr --exec main
-

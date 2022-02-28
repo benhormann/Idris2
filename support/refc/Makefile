@@ -1,5 +1,7 @@
 include ../../config.mk
 
+DESTDIR := $(or $(DESTDIR),$(PREFIX))
+
 TARGET = libidris2_refc
 
 LIBTARGET = $(TARGET).a
@@ -43,5 +45,5 @@ cleandep: clean
 .PHONY: install
 
 install: build
-	mkdir -p ${PREFIX}/idris2-${IDRIS2_VERSION}/support/refc
-	install -m 644 $(LIBTARGET) *.h ${PREFIX}/idris2-${IDRIS2_VERSION}/support/refc
+	mkdir -p "$(DESTDIR)/idris2-$(VERSION)/support/refc"
+	install -m 644 $(LIBTARGET) *.h "$(DESTDIR)/idris2-$(VERSION)/support/refc"

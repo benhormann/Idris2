@@ -1,3 +1,9 @@
 rm -rf build
 
+if [ "$OS" = windows ]; then
+    echo "Incremental compilation not supported on Windows (currently)." >&2
+    cat expected
+    exit
+fi
+
 $1 --no-banner --no-color --console-width 0 Main.idr --inc chez < input

@@ -1,0 +1,22 @@
+package prelude
+version = 0.5.1
+
+opts = "--no-prelude"
+
+sourcedir = "../libs/prelude"
+builddir = "../build/bootstrap/stage0"
+
+modules = Builtin,
+          PrimIO,
+          Prelude,
+          Prelude.Basics,
+          Prelude.Cast,
+          Prelude.EqOrd,
+          Prelude.Interfaces,
+          Prelude.Interpolation,
+          Prelude.IO,
+          Prelude.Num,
+          Prelude.Ops,
+          Prelude.Show,
+          Prelude.Types,
+          Prelude.Uninhabited

@@ -1,6 +1,10 @@
 package idris2
 version = 0.5.1
 
+depends = base, network
+
+sourcedir = "src"
+
 modules =
     Algebra,
     Algebra.Preorder,
@@ -281,7 +285,3 @@ modules =
 
     Yaffle.Main,
     Yaffle.REPL
-
-depends = network
-
-sourcedir = "src"

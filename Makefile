@@ -1,278 +1,157 @@
 include config.mk
 
-# Idris 2 executable used to bootstrap
-export IDRIS2_BOOT ?= idris2
+## Setup ##
+_YPREFIX := $(call _cygpath,$(PREFIX))
 
-# Idris 2 executable we're building
-NAME = idris2
-TARGETDIR = ${CURDIR}/build/exec
-TARGET = ${TARGETDIR}/${NAME}
+# Git prints <tag>-<num-commits-since>-g<hash>[-dirty], or <hash>[-dirty] (no match).
+_GIT_CMD = git describe --always --dirty --long --match=v$(VERSION) --tags
+# Sed removes <tag>-0-g<hash>[-], or <tag>-<n>-g, or nothing.
+_SED_CMD = sed 's/v[^-]*-0*-*[^-]*-*g*//'
+VERSION_TAG := $(or $(shell $(_GIT_CMD) | $(_SED_CMD)),$(VERSION_TAG))
 
-# Default code generator. This is passed to the libraries for incremental
-# builds, but overridable via environment variables or arguments to make
-IDRIS2_CG ?= chez
+$(info YPREFIX=$(_YPREFIX))
+$(info VERSION=$(VERSION))
+$(info VERSION_TAG=$(VERSION_TAG))
 
-MAJOR=0
-MINOR=5
-PATCH=1
+_VERSION_TUPLE = ($(subst .,$(strip ,),$(VERSION)))
 
-GIT_SHA1=
-ifeq ($(shell git status >/dev/null 2>&1; echo $$?), 0)
-	# inside a git repo
-	ifneq ($(shell git describe --exact-match --tags >/dev/null 2>&1; echo $$?), 0)
-		# not tagged as a released version, so add sha1 of this build in between releases
-		GIT_SHA1 := $(shell git rev-parse --short=9 HEAD)
-	endif
+_LIBS := $(wildcard libs/*)
+_LIBS_PATH := $(call _MK_PATH,$(PWD)/,$(_LIBS),/build/ttc)
+
+define _USE_BUILD
+$1: export IDRIS2_PREFIX := $(PWD)/build/prefix
+$1: export IDRIS2_PACKAGE_PATH := $(PWD)/libs
+$1: export IDRIS2_PATH := $(_LIBS_PATH)
+$1: export IDRIS2_DATA := $(PWD)/support
+$1: export IDRIS2_LIBS := $(PWD)/support/c
+endef
+
+_IPKG_CMDS = --build --clean --install --install-with-src --mkdoc --typecheck
+_FLAGS = $(filter-out $(_IPKG_CMDS),$(IDRIS2FLAGS)) \
+         $(lastword $(filter $(_IPKG_CMDS),--build $(IDRIS2FLAGS)))
+
+
+## Aliases ##
+all: support idris2.ipkg libs
+
+support: support/c support/chez support/refc
+
+src/IdrisPaths.idr: IdrisPaths
+idris2: idris2.ipkg
+idris2-exec: idris2.ipkg
+idris2-api: idris2api.ipkg
+
+libs: $(_LIBS)
+
+# Forward bootstrap targets.
+bootstrap-%: ; $(MAKE) -f Bootstrap.mk $*
+
+# Forward install targets.
+install: install-all
+install-%: ; $(MAKE) -f Install.mk $*
+
+.PHONY: all bootstrap idris2-api idris2-exec IdrisPaths \
+        install install-api libs $(_LIBS) support support/* test
+.SUFFIXES: # Disable built-in suffix recipes.
+.NOTPARALLEL: # Most targets in this file cannot be run in parallel.
+
+
+## Support ##
+support/*: ; make -C $@
+
+
+## Idris / API ##
+IdrisPaths:
+	set -e; sum=$$(cksum src/$@.idr 2>/dev/null || :); \
+	printf %s\\n \
+	  'module $@' '' '-- @''generated' \
+	  '' 'public export' 'idrisVersion : ((Nat,Nat,Nat), String)' \
+	  'idrisVersion = ($(_VERSION_TUPLE), "$(VERSION_TAG)")' \
+	  '' 'public export' 'yprefix : String' \
+	  "yprefix = \"$(_YPREFIX)\"" \
+	  > src/$@.idr; \
+	  if [ "$$sum" = "$$(cksum src/$@.idr)" ]; then touch -mr src src/$@.idr; fi
+
+idris%.ipkg: IdrisPaths
+	"$(IDRIS2_BOOT)" $(_FLAGS) $@
+
+install-api: IDRIS2FLAGS += --install
+install-api: idris2-api
+
+
+## Libs ##
+# These prereqs are used for IDRIS2_PATH. Packages with missing dependencies will fail.
+# TODO: Get these from ipkg depends field?
+libs/base: libs/prelude
+libs/contrib: libs/prelude libs/base
+libs/linear: libs/prelude libs/base
+libs/network: libs/prelude libs/base libs/contrib
+libs/test: libs/prelude libs/base libs/contrib
+libs/papers: libs/prelude libs/base libs/contrib libs/linear
+
+$(eval $(call _USE_BUILD,$(_LIBS)))
+$(_LIBS): export IDRIS2_PATH = $(call _MK_PATH,$(PWD)/,$^,/build/ttc)
+$(_LIBS): export IDRIS2_INC_CGS = $(or $(IDRIS2_CG),chez)
+$(_LIBS):
+	./build/exec/idris2 $(_FLAGS) $@/$(@F).ipkg
+
+libdocs: IDRIS2FLAGS += --mkdoc
+libdocs: libs
+
+
+## Bootstrap ##
+_bootstrap: support/c IdrisPaths
+	$(MAKE) -f Bootstrap.mk
+
+bootstrap: _bootstrap libs
+
+bootstrap-racket: export IDRIS2_CG = racket
+bootstrap-racket: bootstrap
+
+
+## Tests ##
+$(eval $(call _USE_BUILD,test))
+test: IDRIS2 := $(abspath build/exec/idris2)
+test: _runtests
+
+test-installed: IDRIS2 := $(or $(IDRIS2),idris2)
+test-installed: _runtests
+
+retest: only-file = --only-file failures
+retest: test
+
+ifneq (, $(_Windows))
+_runtests: export OS = windows
 endif
-VERSION_TAG ?= $(GIT_SHA1)
-
-export IDRIS2_VERSION := ${MAJOR}.${MINOR}.${PATCH}
-export NAME_VERSION := ${NAME}-${IDRIS2_VERSION}
-IDRIS2_SUPPORT := libidris2_support${SHLIB_SUFFIX}
-IDRIS2_APP_IPKG := idris2.ipkg
-IDRIS2_LIB_IPKG := idris2api.ipkg
-
-ifeq ($(OS), windows)
-	# This produces D:/../.. style paths
-	IDRIS2_PREFIX := $(shell cygpath -m ${PREFIX})
-	IDRIS2_CURDIR := $(shell cygpath -m ${CURDIR})
-	SEP := ;
-else
-	IDRIS2_PREFIX := ${PREFIX}
-	IDRIS2_CURDIR := ${CURDIR}
-	SEP := :
-endif
-
-TEST_PREFIX ?= ${IDRIS2_CURDIR}/build/env
-
-# Library and data paths for bootstrap-test
-IDRIS2_BOOT_PREFIX := ${IDRIS2_CURDIR}/bootstrap-build
-
-# These are the library path in the build dir to be used during build
-export IDRIS2_BOOT_PATH := "${IDRIS2_CURDIR}/libs/prelude/build/ttc${SEP}${IDRIS2_CURDIR}/libs/base/build/ttc${SEP}${IDRIS2_CURDIR}/libs/contrib/build/ttc${SEP}${IDRIS2_CURDIR}/libs/network/build/ttc${SEP}${IDRIS2_CURDIR}/libs/test/build/ttc${SEP}${IDRIS2_CURDIR}/libs/linear/build/ttc"
-
-export SCHEME
+_runtests: threads ?= $(shell { nproc || sysctl -n hw.ncpu; } 2>/dev/null)
+_runtests:
+	./build/exec/idris2 --build tests/tests.ipkg
+	cd tests && ./build/exec/runtests "$(IDRIS2)" --threads $(threads) \
+	  --timing --failure-file failures $(only-file) --only $(only)
 
 
-.PHONY: all idris2-exec libdocs testenv testenv-clean support support-clean clean FORCE
+## Clean ##
+clean-bootstrap:
+	$(RM) -r build/bootstrap
 
-all: support ${TARGET} libs
-
-idris2-exec: ${TARGET}
-
-${TARGET}: src/IdrisPaths.idr
-	${IDRIS2_BOOT} --build ${IDRIS2_APP_IPKG}
-
-# We use FORCE to always rebuild IdrisPath so that the git SHA1 info is always up to date
-src/IdrisPaths.idr: FORCE
-	echo "-- @""generated" > src/IdrisPaths.idr
-	echo 'module IdrisPaths' >> src/IdrisPaths.idr
-	echo 'export idrisVersion : ((Nat,Nat,Nat), String); idrisVersion = ((${MAJOR},${MINOR},${PATCH}), "${VERSION_TAG}")' >> src/IdrisPaths.idr
-	echo 'export yprefix : String; yprefix="${IDRIS2_PREFIX}"' >> src/IdrisPaths.idr
-
-FORCE:
-
-prelude:
-	${MAKE} -C libs/prelude IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-base: prelude
-	${MAKE} -C libs/base IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-network: prelude
-	${MAKE} -C libs/network IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-contrib: base
-	${MAKE} -C libs/contrib IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-test-lib: contrib
-	${MAKE} -C libs/test IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-linear:
-	${MAKE} -C libs/linear IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-papers: contrib linear
-	${MAKE} -C libs/papers IDRIS2=${TARGET} IDRIS2_INC_CGS=${IDRIS2_CG} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-libs : prelude base contrib network test-lib linear papers
-
-libdocs:
-	${MAKE} -C libs/prelude docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-	${MAKE} -C libs/base docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-	${MAKE} -C libs/contrib docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-	${MAKE} -C libs/network docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-	${MAKE} -C libs/test docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-	${MAKE} -C libs/linear docs IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH}
-
-
-ifeq ($(OS), windows)
-${TEST_PREFIX}/${NAME_VERSION} :
-	${MAKE} install-support PREFIX=${TEST_PREFIX}
-	cp -rf ${IDRIS2_CURDIR}/libs/prelude/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/prelude-${IDRIS2_VERSION}
-	cp -rf ${IDRIS2_CURDIR}/libs/base/build/ttc    ${TEST_PREFIX}/${NAME_VERSION}/base-${IDRIS2_VERSION}
-	cp -rf ${IDRIS2_CURDIR}/libs/test/build/ttc    ${TEST_PREFIX}/${NAME_VERSION}/test-${IDRIS2_VERSION}
-	cp -rf ${IDRIS2_CURDIR}/libs/contrib/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/contrib-${IDRIS2_VERSION}
-	cp -rf ${IDRIS2_CURDIR}/libs/network/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/network-${IDRIS2_VERSION}
-else
-${TEST_PREFIX}/${NAME_VERSION} :
-	${MAKE} install-support PREFIX=${TEST_PREFIX}
-	ln -sf ${IDRIS2_CURDIR}/libs/prelude/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/prelude-${IDRIS2_VERSION}
-	ln -sf ${IDRIS2_CURDIR}/libs/base/build/ttc    ${TEST_PREFIX}/${NAME_VERSION}/base-${IDRIS2_VERSION}
-	ln -sf ${IDRIS2_CURDIR}/libs/test/build/ttc    ${TEST_PREFIX}/${NAME_VERSION}/test-${IDRIS2_VERSION}
-	ln -sf ${IDRIS2_CURDIR}/libs/contrib/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/contrib-${IDRIS2_VERSION}
-	ln -sf ${IDRIS2_CURDIR}/libs/network/build/ttc ${TEST_PREFIX}/${NAME_VERSION}/network-${IDRIS2_VERSION}
-endif
-
-.PHONY: ${TEST_PREFIX}/${NAME_VERSION}
-
-testenv:
-	@${MAKE} ${TEST_PREFIX}/${NAME_VERSION}
-	@${MAKE} -C tests testbin IDRIS2=${TARGET} IDRIS2_PREFIX=${TEST_PREFIX}
-
-testenv-clean:
-	$(RM) -r ${TEST_PREFIX}/${NAME_VERSION}
-
-test: testenv
-	@echo
-	@echo "NOTE: \`${MAKE} test\` does not rebuild Idris or the libraries packaged with it; to do that run \`${MAKE}\`"
-	@if [ ! -x "${TARGET}" ]; then echo "ERROR: Missing IDRIS2 executable. Cannot run tests!\n"; exit 1; fi
-	@echo
-	@${MAKE} -C tests only=$(only) IDRIS2=${TARGET} IDRIS2_PREFIX=${TEST_PREFIX}
-
-retest: testenv
-	@echo
-	@echo "NOTE: \`${MAKE} retest\` does not rebuild Idris or the libraries packaged with it; to do that run \`${MAKE}\`"
-	@if [ ! -x "${TARGET}" ]; then echo "ERROR: Missing IDRIS2 executable. Cannot run tests!\n"; exit 1; fi
-	@echo
-	@${MAKE} -C tests retest only=$(only) IDRIS2=${TARGET} IDRIS2_PREFIX=${TEST_PREFIX}
-
-test-installed:
-	@${MAKE} -C tests testbin      IDRIS2=$(IDRIS2_PREFIX)/bin/idris2 IDRIS2_PREFIX=${IDRIS2_PREFIX}
-	@${MAKE} -C tests only=$(only) IDRIS2=$(IDRIS2_PREFIX)/bin/idris2 IDRIS2_PREFIX=${IDRIS2_PREFIX}
-
-support:
-	@${MAKE} -C support/c
-	@${MAKE} -C support/refc
-	@${MAKE} -C support/chez
-
-support-clean:
-	@${MAKE} -C support/c clean
-	@${MAKE} -C support/refc clean
-	@${MAKE} -C support/chez clean
+clean-idris2:
+	$(RM) -r build/exec/idris2 build/exec/idris2_app build/ttc
 
 clean-libs:
-	${MAKE} -C libs/prelude clean
-	${MAKE} -C libs/base clean
-	${MAKE} -C libs/contrib clean
-	${MAKE} -C libs/network clean
-	${MAKE} -C libs/test clean
-	${MAKE} -C libs/linear clean
-	${MAKE} -C libs/papers clean
+	find libs -depth -type d -name 'build' -exec $(RM) -r '{}' +
 
-clean: clean-libs support-clean testenv-clean
-	-${IDRIS2_BOOT} --clean ${IDRIS2_APP_IPKG}
-	$(RM) src/IdrisPaths.idr
-	${MAKE} -C tests clean
-	$(RM) -r build
+clean-support:
+	find support -type f \( -name '*.[ado]' -o -name '*.dll' -o -name '*.dylib' \
+	  -o -name '*.so' -o -name support-sep.ss \) -exec $(RM) '{}' +
 
-install: install-idris2 install-support install-libs
+clean-test:
+	$(RM) tests/failures
+	find tests -depth -path '*/build*' -exec $(RM) -r {} \;
+	find tests -type f \( -name '*output*' -o -name '*.d' \) -exec $(RM) {} \;
+	find tests -name gen_expected.sh | sed 's/[^/]*$$/expected/' | xargs $(RM)
 
-install-api: src/IdrisPaths.idr
-	${IDRIS2_BOOT} --install ${IDRIS2_LIB_IPKG}
+distclean: clean-support clean-test
+	$(RM) -r build src/IdrisPaths.idr
 
-install-with-src-api: src/IdrisPaths.idr
-	${IDRIS2_BOOT} --install-with-src ${IDRIS2_LIB_IPKG}
-
-install-idris2:
-	mkdir -p ${PREFIX}/bin/${NAME}_app
-	install ${TARGET} ${PREFIX}/bin
-ifeq ($(OS), windows)
-	-install ${TARGET}.cmd ${PREFIX}/bin
-endif
-	install $(filter-out ${TARGET}_app/compiled, $(wildcard ${TARGET}_app/*)) ${PREFIX}/bin/${NAME}_app
-	if [ -d ${TARGET}_app/compiled ]; then \
-		mkdir -p ${PREFIX}/bin/${NAME}_app/compiled; \
-		install ${TARGET}_app/compiled/* ${PREFIX}/bin/${NAME}_app/compiled; \
-	fi
-
-install-support:
-	mkdir -p ${PREFIX}/${NAME_VERSION}/support/docs
-	mkdir -p ${PREFIX}/${NAME_VERSION}/support/racket
-	mkdir -p ${PREFIX}/${NAME_VERSION}/support/gambit
-	mkdir -p ${PREFIX}/${NAME_VERSION}/support/js
-	install -m 644 support/docs/*.css ${PREFIX}/${NAME_VERSION}/support/docs
-	install -m 644 support/racket/* ${PREFIX}/${NAME_VERSION}/support/racket
-	install -m 644 support/gambit/* ${PREFIX}/${NAME_VERSION}/support/gambit
-	install -m 644 support/js/* ${PREFIX}/${NAME_VERSION}/support/js
-	@${MAKE} -C support/c install
-	@${MAKE} -C support/refc install
-	@${MAKE} -C support/chez install
-
-install-libs:
-	${MAKE} -C libs/prelude install IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/base install    IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/contrib install IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/network install IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/test  install   IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/linear  install   IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-
-install-with-src-libs:
-	${MAKE} -C libs/prelude install-with-src IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/base install-with-src    IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/contrib install-with-src IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/network install-with-src IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/test install-with-src    IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-	${MAKE} -C libs/linear install-with-src    IDRIS2=${TARGET} IDRIS2_PATH=${IDRIS2_BOOT_PATH} IDRIS2_INC_CGS=${IDRIS2_CG}
-
-install-libdocs: libdocs
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/prelude
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/base
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/contrib
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/network
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/test
-	mkdir -p ${PREFIX}/${NAME_VERSION}/docs/linear
-	cp -r libs/prelude/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/prelude
-	cp -r libs/base/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/base
-	cp -r libs/contrib/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/contrib
-	cp -r libs/network/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/network
-	cp -r libs/test/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/test
-	cp -r libs/test/build/docs/* ${PREFIX}/${NAME_VERSION}/docs/linear
-	install -m 644 support/docs/* ${PREFIX}/${NAME_VERSION}/docs
-
-
-.PHONY: bootstrap bootstrap-build bootstrap-racket bootstrap-racket-build bootstrap-test bootstrap-clean
-
-# Bootstrapping using SCHEME
-bootstrap: support
-	@if [ "$$(echo '(threaded?)' | $(SCHEME) --quiet)" = "#f" ] ; then \
-		echo "ERROR: Chez is missing threading support" ; exit 1 ; fi
-	mkdir -p bootstrap-build/idris2_app
-	cp support/c/${IDRIS2_SUPPORT} bootstrap-build/idris2_app/
-	sed 's/libidris2_support.so/${IDRIS2_SUPPORT}/g; s|__PREFIX__|${IDRIS2_BOOT_PREFIX}|g' \
-		bootstrap/idris2_app/idris2.ss \
-		> bootstrap-build/idris2_app/idris2-boot.ss
-	$(SHELL) ./bootstrap-stage1-chez.sh
-	IDRIS2_CG="chez" $(SHELL) ./bootstrap-stage2.sh
-
-# Bootstrapping using racket
-bootstrap-racket: support
-	mkdir -p bootstrap-build/idris2_app
-	cp support/c/${IDRIS2_SUPPORT} bootstrap-build/idris2_app/
-	sed 's|__PREFIX__|${IDRIS2_BOOT_PREFIX}|g' \
-		bootstrap/idris2_app/idris2.rkt \
-		> bootstrap-build/idris2_app/idris2-boot.rkt
-	$(SHELL) ./bootstrap-stage1-racket.sh
-	IDRIS2_CG="racket" $(SHELL) ./bootstrap-stage2.sh
-
-bootstrap-test:
-	$(MAKE) test INTERACTIVE='' IDRIS2_PREFIX=${IDRIS2_BOOT_PREFIX}
-
-bootstrap-clean:
-	$(RM) -r bootstrap-build
-
-
-.PHONY: distclean
-
-distclean: clean bootstrap-clean
-	@find . -type f -name '*.ttc' -exec rm -f {} \;
-	@find . -type f -name '*.ttm' -exec rm -f {} \;
-	@find . -type f -name '*.ibc' -exec rm -f {} \;
+mostlyclean:
+	$(RM) -r build/ttc libs/*/build/ttc

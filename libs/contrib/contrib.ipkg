@@ -1,6 +1,8 @@
 package contrib
 version = 0.5.1
 
+depends = base
+
 opts = "--ignore-missing-ipkg -Wno-shadowing"
 
 modules = Control.ANSI,

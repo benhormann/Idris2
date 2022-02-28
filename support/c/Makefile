@@ -1,9 +1,11 @@
 include ../../config.mk
 
+DESTDIR := $(or $(DESTDIR),$(PREFIX))
+
 TARGET = libidris2_support
 
 LIBTARGET = $(TARGET).a
-DYLIBTARGET = $(TARGET)$(SHLIB_SUFFIX)
+DYLIBTARGET = $(TARGET)$(_DYLIB_EXT)
 
 SRCS := $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
@@ -11,7 +13,7 @@ DEPS = $(OBJS:.o=.d)
 
 CFLAGS += -O2
 
-ifeq ($(OS), windows)
+ifneq (, $(_Windows))
 	SRCS += windows/win_utils.c windows/win_hack.c
 	CPPFLAGS += -DWIN32_LEAN_AND_MEAN
 	LDFLAGS += -lws2_32
@@ -53,8 +55,8 @@ cleandep: clean
 .PHONY: install
 
 install: build
-	mkdir -p ${PREFIX}/idris2-${IDRIS2_VERSION}/lib
-	mkdir -p ${PREFIX}/idris2-${IDRIS2_VERSION}/support/c
-	install -m 755 $(DYLIBTARGET) ${PREFIX}/idris2-${IDRIS2_VERSION}/lib
-	install -m 644 $(LIBTARGET)   ${PREFIX}/idris2-${IDRIS2_VERSION}/lib
-	install -m 644 *.h            ${PREFIX}/idris2-${IDRIS2_VERSION}/support/c
+	mkdir -p "$(DESTDIR)/idris2-$(VERSION)/lib"
+	mkdir -p "$(DESTDIR)/idris2-$(VERSION)/support/c"
+	install -m 755 $(DYLIBTARGET) "$(DESTDIR)/idris2-$(VERSION)/lib"
+	install -m 644 $(LIBTARGET)   "$(DESTDIR)/idris2-$(VERSION)/lib"
+	install -m 644 *.h            "$(DESTDIR)/idris2-$(VERSION)/support/c"

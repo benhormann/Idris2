@@ -1,7 +1,9 @@
 package network
 version = 0.5.1
 
-opts = "--ignore-missing-ipkg -p contrib"
+depends = base, contrib
+
+opts = "--ignore-missing-ipkg"
 
 modules = Control.Linear.Network,
 

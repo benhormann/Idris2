@@ -1,0 +1,8 @@
+package network
+version = 0.5.1
+
+sourcedir = "../libs/network"
+builddir = "../build/bootstrap/stage0"
+
+modules = Network.Socket,
+          Network.Socket.Data

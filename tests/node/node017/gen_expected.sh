@@ -1,4 +1,5 @@
-#!/usr/bin/env sh
+#!/bin/sh
+
 if [ "$OS" = "windows" ]; then
     MY_PWD="$(cygpath -m "$(pwd)")\\\\"
 else
