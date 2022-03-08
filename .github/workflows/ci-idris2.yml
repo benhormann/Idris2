@@ -214,10 +214,11 @@ jobs:
   nix-bootstrap-chez:
     needs: quick-check
     runs-on: ubuntu-latest
-    if: |
-      !contains(needs.initialise.outputs.commit_message, '[ci:')
-      || contains(needs.initialise.outputs.commit_message, '[ci: nix]')
-      || contains(needs.initialise.outputs.commit_message, '[ci: chez]')
+    #if: |
+    #  !contains(needs.initialise.outputs.commit_message, '[ci:')
+    #  || contains(needs.initialise.outputs.commit_message, '[ci: nix]')
+    #  || contains(needs.initialise.outputs.commit_message, '[ci: chez]')
+    if: false # TODO: Allow for new DISTDIR support
     steps:
     - uses: actions/checkout@v2
       with:
