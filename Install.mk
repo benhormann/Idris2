@@ -3,10 +3,11 @@ include $(_TOP_DIR_)config.mk
 
 ## Setup ##
 export DESTDIR := $(or $(DESTDIR),$(PREFIX))
-export IDRIS2_PREFIX := $(call cygpath,$(DESTDIR))
+export IDRIS2_PREFIX := $(call _cygpath,$(DESTDIR))
 export VERSION
 
 $(info DESTDIR=$(DESTDIR))
+$(info IDRIS2_PREFIX=$(IDRIS2_PREFIX))
 $(info VERSION=$(VERSION))
 
 # Install order matters.
@@ -36,8 +37,10 @@ idris2:
 	mkdir -p "$(DESTDIR)/bin"
 	cp -r build/exec/idris2 build/exec/idris2_app "$(DESTDIR)/bin"
 
+# Use dependencies from DESTDIR, otherwise from PREFIX.
+idris2api.ipkg: export IDRIS2_PACKAGE_PATH := $(call cygpath,$(PREFIX)/idris2-$(VERSION))
 idris2api.ipkg:
-	unset IDRIS2_PREFIX; "$(IDRIS2_BOOT)" $(IDRIS2FLAGS) --install $@
+	"$(IDRIS2_BOOT)" $(IDRIS2FLAGS) --install $@
 
 
 ## Support ##

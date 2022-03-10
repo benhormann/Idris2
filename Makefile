@@ -52,7 +52,7 @@ install: install-all
 install-%: ; $(MAKE) -f Install.mk $*
 
 .PHONY: all bootstrap idris2-api idris2-exec IdrisPaths \
-        install install-api libs $(_LIBS) support support/* test
+        install libs $(_LIBS) support support/* test
 .SUFFIXES: # Disable built-in suffix recipes.
 .NOTPARALLEL: # Most targets in this file cannot be run in parallel.
 
@@ -76,8 +76,7 @@ IdrisPaths:
 idris%.ipkg: IdrisPaths
 	"$(IDRIS2_BOOT)" $(_FLAGS) $@
 
-install-api: IDRIS2FLAGS += --install
-install-api: idris2-api
+install-api: IdrisPaths
 
 
 ## Libs ##

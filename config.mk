@@ -1,23 +1,32 @@
 ##### Options which a user might set before building go here #####
 
-# Where to install idris2 binaries and libraries (must be an absolute path).
+# Final install location of idris2 executable and libraries.
 PREFIX ?= $(HOME)/.idris2
+
+# Staging location idris2 will install into.
+DESTDIR ?= $(PREFIX)
 
 # Command to run for installed version.
 IDRIS2_BOOT ?= idris2
 
-# Uncomment for Windows targets pre Windows 8. Should auto-detect Windows 7.
-#OLD_WIN := 1
+# Code generator to use.
+export IDRIS2_CG ?= chez
+
+# Uncomment when supporting targets pre Windows 8.
+#export OLD_WIN := 1
 
 ##################################################################
 
 
-VERSION ?= $(shell sed -n 's/^version[^0-9]*//p' $(_TOP_DIR)idris2api.ipkg)
-VERSION_TAG ?= tarball
-
 RANLIB ?= ranlib
 
 CFLAGS := -Wall $(CFLAGS)
+
+
+##### Macros and automated variables #####
+
+VERSION ?= $(shell sed -n 's/^version[^0-9]*//p' $(_TOP_DIR)idris2api.ipkg)
+VERSION_TAG ?= tarball
 
 MAKE_HOST ?= $(shell $(CC) -dumpmachine)
 _MACHINE := $(subst -, ,$(MAKE_HOST))
