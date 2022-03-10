@@ -12,7 +12,7 @@ IDRIS2_BOOT ?= idris2
 ##################################################################
 
 
-VERSION ?= $(shell sed -n 's/^version[^0-9]*//p' idris2api.ipkg)
+VERSION ?= $(shell sed -n 's/^version[^0-9]*//p' $(_TOP_DIR)idris2api.ipkg)
 VERSION_TAG ?= tarball
 
 RANLIB ?= ranlib
@@ -40,13 +40,12 @@ _MK_PATH = $(call _cygPATH,$(if $2,$1$(subst $() ,$3:$1,$2)$3))
 
 
 # Add a custom.mk file to override any of the configurations
-define _example-config-lines_
-export PREFIX := $(HOME)/.idris2-dev
-export DESTDIR := /tmp/idris2-staging
+define _example-custom.mk_
+PREFIX := $(HOME)/.idris2-dev
+DESTDIR := /tmp/idris2-staging
+IDRIS2_BOOT := $(HOME)/.idris2-stable/bin/idris2
 export IDRIS2_CG := racket
 export CHEZ := my-chez # Note: common names in PATH are auto-detected
-IDRIS2_BOOT := $(HOME)/.idris2-stable/bin/idris2
 endef
-#custom.mk:; sed '1,/^define _example-config/d;/^endef/,$$d' config.mk >> $@
 
--include custom.mk
+-include $(_TOP_DIR)custom.mk

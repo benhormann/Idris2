@@ -1,4 +1,5 @@
-include config.mk
+_TOP_DIR_ =
+include $(_TOP_DIR_)config.mk
 
 ## Config ##
 _Racket := $(firstword $(filter racket,$(IDRIS2_CG) $(MAKECMDGOALS)))

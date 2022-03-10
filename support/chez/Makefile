@@ -1,6 +1,5 @@
-include ../../config.mk
-
-DESTDIR := $(or $(DESTDIR),$(PREFIX))
+_TOP_DIR_ = ../../
+include $(_TOP_DIR_)config.mk
 
 all: build
 

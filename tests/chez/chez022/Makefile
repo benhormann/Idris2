@@ -1,4 +1,5 @@
-include ../../../config.mk
+_TOP_DIR_ = ../../../
+include $(_TOP_DIR_)config.mk
 
 TARGET = libmkalloc
 

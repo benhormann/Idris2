@@ -1,19 +1,12 @@
-include config.mk
+_TOP_DIR_ =
+include $(_TOP_DIR_)config.mk
 
 ## Setup ##
-#export PREFIX := $(shell sed -n 's/"$$//;s/yprefix *=.*"//p' src/IdrisPaths.idr)
-#export VERSION := $(shell sed -n 's/,/./g;s/.*(\([0-9.]*\)).*/\1/p' src/IdrisPaths.idr)
-#export PREFIX := $(shell unset IDRIS2_PREFIX; ./build/exec/idris2 --prefix)
-#export VERSION := $(shell ./build/exec/idris2 --version | sed 's/.* //;s/-.*//')
-$(shell unset IDRIS2_PREFIX IDRIS2_DATA; ./build/exec/idris2 --paths > build/.paths)
-export PREFIX := $(shell sed -En 's|.*Prefix *:: "(.*)"|\1|p' build/.paths)
-export VERSION := $(shell sed -En 's|.*\[".*-([0-9.]*)/support"\]|\1|p' build/.paths)
-
 export DESTDIR := $(or $(DESTDIR),$(PREFIX))
-export IDRIS2_PREFIX := $(DESTDIR)
+export IDRIS2_PREFIX := $(call cygpath,$(DESTDIR))
+export VERSION
 
 $(info DESTDIR=$(DESTDIR))
-$(info PREFIX=$(PREFIX))
 $(info VERSION=$(VERSION))
 
 # Install order matters.
