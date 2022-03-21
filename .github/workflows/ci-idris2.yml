@@ -33,7 +33,7 @@ on:
       - '.github/workflows/ci-super-linter.yml'
 
 env:
-  IDRIS2FLAGS: "-Werror"
+  IDRIS2FLAGS: -Werror
   PREVIOUS_VERSION: 0.5.1 # For previous-version build
 
 jobs:
@@ -55,8 +55,7 @@ jobs:
             echo "::set-output name=commit_message::$(git log --format=%B -n 1 HEAD^2)"
           fi
     outputs:
-      commit_message:
-        echo "${{ steps.get_commit_message.outputs.commit_message }}"
+      commit_message: echo "${{ steps.get_commit_message.outputs.commit_message }}"
 
   ######################################################################
   # Build from the previous version
@@ -225,6 +224,8 @@ jobs:
         shell: msys2 {0}
     env:
       SCHEME: scheme
+    outputs:
+      chezscheme-commit: ${{ steps.chezscheme-commit.outputs.commit }}
     steps:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -238,12 +239,25 @@ jobs:
         run: git config --global core.autocrlf false
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Fetch Chez Scheme Commit Hash
+        id: chezscheme-commit
+        run: |
+          commit=$(git ls-remote https://github.com/cisco/ChezScheme.git HEAD | cut -f1)
+          echo "::set-output name=commit::$commit"
+      - name: Cache Chez Scheme
+        id: windows-chezscheme-cache
+        uses: actions/cache@v2
+        with:
+          path: ChezScheme
+          key: windows-chezscheme-${{ steps.chezscheme-commit.outputs.commit }}
       - name: Get Chez Scheme
+        if: steps.windows-chezscheme-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
-          repository: 'cisco/ChezScheme'
-          path: 'ChezScheme'
+          repository: cisco/ChezScheme
+          path: ChezScheme
       - name: Configure and Build Chez Scheme
+        if: steps.windows-chezscheme-cache.outputs.cache-hit != 'true'
         run: cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
@@ -485,12 +499,20 @@ jobs:
         run: git config --global core.autocrlf false
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Cache Chez Scheme
+        id: windows-chezscheme-cache
+        uses: actions/cache@v2
+        with:
+          path: ChezScheme
+          key: windows-chezscheme-${{ needs.windows-bootstrap-chez.outputs.chezscheme-commit }}
       - name: Get Chez Scheme
+        if: steps.windows-chezscheme-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
-          repository: 'cisco/ChezScheme'
-          path: 'ChezScheme'
+          repository: cisco/ChezScheme
+          path: ChezScheme
       - name: Configure and Build Chez Scheme
+        if: steps.windows-chezscheme-cache.outputs.cache-hit != 'true'
         run: cd ChezScheme && ./configure --threads && make
       - name: Set Path
         run: |
@@ -507,9 +529,9 @@ jobs:
       - name: Install build dependencies
         uses: Bogdanp/setup-racket@v1.4
         with:
-          variant: 'CS'
-          version: 'stable'
-          distribution: 'full'
+          variant: CS
+          version: stable
+          distribution: full
       - name: Self host
         run: make
       - name: Test
@@ -575,7 +597,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          repository: 'ohad/collie'
+          repository: ohad/collie
       - name: Build Collie
         run: make
 
@@ -603,7 +625,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          repository: 'frex-project/idris-frex'
+          repository: frex-project/idris-frex
       - name: Build Frex
         run: make && make test
 
@@ -631,6 +653,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          repository: 'stefan-hoeck/idris2-elab-util'
+          repository: stefan-hoeck/idris2-elab-util
       - name: Build idris2-elab-util
         run: make all
