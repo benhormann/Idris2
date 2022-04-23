@@ -1,7 +1,7 @@
 package base
 version = 0.5.1
 
-opts = "--ignore-missing-ipkg -Wno-shadowing"
+options = "-Wno-shadowing"
 
 modules = Control.App,
           Control.App.Console,
