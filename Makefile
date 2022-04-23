@@ -15,16 +15,16 @@ include config.mk
 
 ## STAGE 2 ##
 libs: build/stage2/idris2
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/prelude/prelude.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/base/base.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/contrib/contrib.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/network/network.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/test/test.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/linear/linear.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/papers/papers.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/prelude/prelude.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/base/base.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/contrib/contrib.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/network/network.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/test/test.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/linear/linear.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/papers/papers.ipkg
 
 build/stage2/idris2: build/stage1/idris2
-	./$^ --build-dir $(^D) --output-dir $(@D)/exec --build idris2.ipkg
+	./$^ --build-dir $(@D) --build idris2.ipkg
 	./Launcher.sh "stage2" > $@
 	chmod u+x $@
 
@@ -33,14 +33,14 @@ _BOOTSTRAPING := $(filter bootstrap,$(MAKECMDGOALS))
 
 build/stage1/idris2: IdrisPaths $(if $(_BOOTSTRAPING),_bootstrap-libs)
 ifeq (bootstrap, $(_BOOTSTRAPING))
-	./build/bootstrap/idris2 --build-dir build/bootstrap --output-dir $(@D)/exec --build idris2.ipkg
+	./build/bootstrap/idris2 --build-dir $(@D)/bootstrap --output-dir $(@D)/exec --build idris2.ipkg
 else
-	$(IDRIS2_BOOT) --build-dir build/stage0 --output-dir $(@D)/exec --build idris2.ipkg
+	$(IDRIS2_BOOT) --build-dir $(@D)/stage0 --output-dir $(@D)/exec --build idris2.ipkg
 endif
 	./Launcher.sh "stage1" > $@
 	chmod u+x $@
-	./$@ --build-dir $(_CWD)/$(@D) --build libs/prelude/prelude.ipkg
-	./$@ --build-dir $(_CWD)/$(@D) --build libs/base/base.ipkg
+	./$@ --build-dir ../../$(@D) --build libs/prelude/prelude.ipkg
+	./$@ --build-dir ../../$(@D) --build libs/base/base.ipkg
 	./$@ --build-dir $(@D) --source-dir libs/network --verbose --check libs/network/Network/Socket.idr
 
 ## BOOTSTRAP ##
@@ -49,8 +49,8 @@ _BOOT_SRC = idris2_app/$(if $(_RACKET),idris2.rkt,idris2.ss)
 _BOOT_BIN = idris2_app/$(if $(_RACKET),compiled/idris2_rkt.zo,idris2.so)
 
 _bootstrap-libs: build/bootstrap/idris2
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/prelude/prelude.ipkg
-	./$^ --build-dir $(_CWD)/$(^D) --build libs/base/base.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/prelude/prelude.ipkg
+	./$^ --build-dir ../../$(^D) --build libs/base/base.ipkg
 	./$^ --build-dir $(^D) --source-dir libs/network --verbose --check libs/network/Network/Socket.idr
 
 build/bootstrap/idris2: build/bootstrap/exec/$(_BOOT_BIN)
@@ -150,11 +150,8 @@ clean-stage2:
 clean-stage1:
 	$(RM) -r build/stage1
 
-clean-stage0:
-	$(RM) -r build/stage0
-
 clean-bootstrap:
 	$(RM) -r build/bootstrap
 
-distclean: clean-test clean-support clean-stage2 clean-stage1 clean-stage0 clean-bootstrap
+distclean: clean-test clean-support clean-stage2 clean-stage1 clean-bootstrap
 	$(RM) -r build
