@@ -133,6 +133,17 @@ install-support:
 
 
 #############
+### TESTS ###
+#############
+
+test:
+	$(MAKE) -C tests testbin test IDRIS2="$(_CWD)/build/stage2/idris2"
+
+retest:
+	$(MAKE) -C tests testbin retest IDRIS2="$(_CWD)/build/stage2/idris2"
+
+
+#############
 ### CLEAN ###
 #############
 
