@@ -15,7 +15,8 @@ include config.mk
 
 ## STAGE 2 ##
 libs: build/stage2/idris2
-	./$^ --build-dir ../../$(^D) --build libs/prelude/prelude.ipkg
+# One of the tests (chez/chez033) requires incremental files.
+	IDRIS2_INC_CGS=chez ./$^ --build-dir ../../$(^D) --build libs/prelude/prelude.ipkg
 	./$^ --build-dir ../../$(^D) --build libs/base/base.ipkg
 	./$^ --build-dir ../../$(^D) --build libs/contrib/contrib.ipkg
 	./$^ --build-dir ../../$(^D) --build libs/network/network.ipkg

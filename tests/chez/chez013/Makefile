@@ -1,3 +1,4 @@
+_TOP_DIR = ../../../
 include ../../../config.mk
 
 TARGET = libstruct
@@ -7,9 +8,9 @@ OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
 
-all: $(TARGET)$(SHLIB_SUFFIX)
+all: $(TARGET)$(_LIB_EXT)
 
-$(TARGET)$(SHLIB_SUFFIX): $(OBJS)
+$(TARGET)$(_LIB_EXT): $(OBJS)
 	$(CC) -shared $(LDFLAGS) -o $@ $^
 
 
@@ -22,7 +23,7 @@ $(TARGET)$(SHLIB_SUFFIX): $(OBJS)
 .PHONY: clean
 
 clean :
-	$(RM) $(OBJS) $(TARGET)$(SHLIB_SUFFIX)
+	$(RM) $(OBJS) $(TARGET)$(_LIB_EXT)
 
 cleandep: clean
 	$(RM) $(DEPS)
