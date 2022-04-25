@@ -34,7 +34,7 @@ findGSI =
 findGSC : IO String
 findGSC =
   do env <- idrisGetEnv "GAMBIT_GSC"
-     pure $ fromMaybe "/usr/bin/env gsc" env
+     pure $ fromMaybe "gsc" env
 
 findGSCBackend : IO String
 findGSCBackend =
@@ -390,11 +390,10 @@ compileExpr c tmpDir outputDir tm outfile
                    (showSep " " libsfile) ++ "\""
                  Just _ => " -c"
          let cmd =
-             gsc ++ gscCompileOpts ++ " -o \"" ++ execPath ++ "\" \"" ++ srcPath ++ "\""
-         ok <- coreLift $ system cmd
-         if ok == 0
-            then pure (Just execPath)
-            else pure Nothing
+             "\"" ++ gsc ++ "\"" ++ gscCompileOpts ++ " -o \"" ++ execPath ++ "\" \"" ++ srcPath ++ "\""
+         0 <- coreLift $ system cmd
+            | exitCode => throw (InternalError $ "Non-zero compiler exitCode: " ++ show exitCode)
+         pure (Just execPath)
 
 executeExpr : Ref Ctxt Defs -> (tmpDir : String) -> ClosedTerm -> Core ()
 executeExpr c tmpDir tm

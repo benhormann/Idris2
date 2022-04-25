@@ -30,12 +30,12 @@ import System.Info
 findRacket : IO String
 findRacket =
   do env <- idrisGetEnv "RACKET"
-     pure $ fromMaybe "/usr/bin/env racket" env
+     pure $ fromMaybe "racket" env
 
-findRacoExe : IO String
-findRacoExe =
+findRaco : IO String
+findRaco =
   do env <- idrisGetEnv "RACKET_RACO"
-     pure $ (fromMaybe "/usr/bin/env raco" env) ++ " exe"
+     pure $ fromMaybe "raco" env
 
 schHeader : Bool -> String -> String
 schHeader prof libs = """
@@ -347,7 +347,7 @@ startRacket racket appdir target = """
   export LD_LIBRARY_PATH="$DIR/\{ appdir }:$LD_LIBRARY_PATH"
   export DYLD_LIBRARY_PATH="$DIR/\{ appdir }:$DYLD_LIBRARY_PATH"
 
-  \{ racket } "$DIR/\{ target }" "$@"
+  "\{ racket }" "$DIR/\{ target }" "$@"
   """
 
 startRacketCmd : String -> String -> String -> String
@@ -359,7 +359,7 @@ startRacketCmd racket appdir target = """
   set APPDIR=%~dp0
   set PATH=%APPDIR%\{ appdir };%PATH%
 
-  \{ racket } "%APPDIR%\{ target }" %*
+  "\{ racket }" "%APPDIR%\{ target }" %*
   """
 
 startRacketWinSh : String -> String -> String -> String
@@ -372,7 +372,7 @@ startRacketWinSh racket appdir target = """
   DIR=$(dirname "$(readlink -f -- "$0" || cygpath -a -- "$0")")
   PATH="$DIR/\{ appdir }:$PATH"
 
-  \{ racket } "$DIR/\{ target }" "$@"
+  "\{ windowsToUnix racket }" "$DIR/\{ windowsToUnix target }" "$@"
   """
 
 compileToRKT : Ref Ctxt Defs ->
@@ -407,18 +407,18 @@ compileToRKT c appdir tm outfile
          pure ()
 
 makeSh : String -> String -> String -> String -> Core ()
-makeSh racket outShRel appdir outAbs
-    = do Right () <- coreLift $ writeFile outShRel (startRacket racket appdir outAbs)
+makeSh racket outShRel appdir target
+    = do Right () <- coreLift $ writeFile outShRel (startRacket racket appdir target)
             | Left err => throw (FileErr outShRel err)
          pure ()
 
 ||| Make Windows start scripts, one for bash environments and one batch file
 makeShWindows : String -> String -> String -> String -> Core ()
-makeShWindows racket outShRel appdir outAbs
+makeShWindows racket outShRel appdir target
     = do let cmdFile = outShRel ++ ".cmd"
-         Right () <- coreLift $ writeFile cmdFile (startRacketCmd racket appdir outAbs)
+         Right () <- coreLift $ writeFile cmdFile (startRacketCmd racket appdir target)
             | Left err => throw (FileErr cmdFile err)
-         Right () <- coreLift $ writeFile outShRel (startRacketWinSh racket appdir outAbs)
+         Right () <- coreLift $ writeFile outShRel (startRacketWinSh racket appdir target)
             | Left err => throw (FileErr outShRel err)
          pure ()
 
@@ -431,34 +431,29 @@ compileExpr mkexec c tmpDir outputDir tm outfile
          Just cwd <- coreLift currentDir
               | Nothing => throw (InternalError "Can't get current directory")
 
-         let ext = if isWindows then ".exe" else ""
          let outRktFile = appDirRel </> outfile <.> "rkt"
-         let outBinFile = appDirRel </> outfile <.> ext
+         let outBinFile = appDirRel </> "compiled" </> outfile ++ "_rkt.zo"
          let outRktAbs = cwd </> outputDir </> outRktFile
          let outBinAbs = cwd </> outputDir </> outBinFile
 
          compileToRKT c appDirGen tm outRktAbs
-         raco <- coreLift findRacoExe
+         raco <- coreLift findRaco
          racket <- coreLift findRacket
 
-         ok <- the (Core Int) $ if mkexec
+         exitCode <- the (Core Int) $ if mkexec
                   then logTime 1 "Build racket" $
                          coreLift $
-                           system (raco ++ " -o " ++ outBinAbs ++ " " ++ outRktAbs)
+                           system ("\"" ++ raco ++ "\" make " ++ outRktAbs)
                   else pure 0
-         if ok == 0
-            then do -- TODO: add launcher script
+         if exitCode /= 0
+            then throw (InternalError $ "Non-zero compiler exitCode: " ++ show exitCode)
+            else do
                     let outShRel = outputDir </> outfile
-                    if isWindows
-                       then if mkexec
-                               then makeShWindows "" outShRel appDirRel outBinFile
-                               else makeShWindows (racket ++ " ") outShRel appDirRel outRktFile
-                       else if mkexec
-                               then makeSh "" outShRel appDirRel outBinFile
-                               else makeSh (racket ++ " ") outShRel appDirRel outRktFile
+                    let makeScript = if isWindows then makeShWindows else makeSh
+                    let target = if mkexec then outBinFile else outRktFile
+                    makeScript racket outShRel appDirRel target
                     coreLift_ $ chmodRaw outShRel 0o755
                     pure (Just outShRel)
-            else pure Nothing
 
 executeExpr : Ref Ctxt Defs -> (tmpDir : String) -> ClosedTerm -> Core ()
 executeExpr c tmpDir tm
