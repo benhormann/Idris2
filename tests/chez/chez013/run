@@ -1,14 +1,10 @@
-case $(uname -s) in
-    OpenBSD | FreeBSD | NetBSD)
-        MAKE=gmake
-        ;;
-
-    *)
-        MAKE=make
-        ;;
+case $(uname) in
+    *BSD | DragonFly) MAKE='gmake' ;;
+    *) MAKE='make' ;;
 esac
 
-${MAKE} all > /dev/null
-$1 --no-color --console-width 0 --no-banner Struct.idr < input
+${MAKE} all >/dev/null
+$1 --no-color --console-width 0 --no-banner Struct.idr <input
+
 rm -rf build
-${MAKE} clean > /dev/null
+${MAKE} clean >/dev/null
